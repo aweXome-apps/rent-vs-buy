@@ -1,0 +1,149 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2575.4">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="en"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta charset="UTF-8"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;title&gt;Rent vs Buy Calculator&lt;/title&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://cdn.jsdelivr.net/npm/chart.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>body { font-family: Arial, sans-serif; margin: 20px; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.section { margin-bottom: 20px; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>label { display: block; margin-bottom: 5px; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>input { width: 100%; padding: 5px; margin-bottom: 10px; box-sizing: border-box; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>button { padding: 10px 20px; background-color: #007BFF; color: white; border: none; cursor: pointer; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>button:hover { background-color: #0056b3; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>canvas { max-width: 100%; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>h1, h2 { color: #333; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;h1&gt;Rent vs Buy Calculator&lt;/h1&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="section"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2&gt;General Inputs&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Initial Savings ($): &lt;input type="number" id="initialSavings" value="50000"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Annual Income ($): &lt;input type="number" id="annualIncome" value="60000"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Annual Non-Housing Expenses ($): &lt;input type="number" id="annualExpenses" value="30000"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Investment Return Rate (%): &lt;input type="number" step="0.1" id="investmentRate" value="5"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="section"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2&gt;Buying Inputs&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;House Price ($): &lt;input type="number" id="housePrice" value="300000"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Down Payment ($): &lt;input type="number" id="downPayment" value="60000"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Mortgage Interest Rate (%): &lt;input type="number" step="0.1" id="mortgageRate" value="4"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Property Tax Rate (% of house value): &lt;input type="number" step="0.1" id="propertyTaxRate" value="1"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Annual Insurance Cost ($): &lt;input type="number" id="insuranceCost" value="1000"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Annual Maintenance Cost ($): &lt;input type="number" id="maintenanceCost" value="3000"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Expected Annual House Appreciation (%): &lt;input type="number" step="0.1" id="appreciationRate" value="3"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="section"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2&gt;Renting Inputs&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Monthly Rent ($): &lt;input type="number" id="monthlyRent" value="1500"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;Expected Annual Rent Increase (%): &lt;input type="number" step="0.1" id="rentIncreaseRate" value="2"&gt;&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;button onclick="calculate()"&gt;Calculate&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;canvas id="netWorthChart"&gt;&lt;/canvas&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>function calculate() {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>// Retrieve and parse inputs</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const S = parseFloat(document.getElementById('initialSavings').value); <span class="Apple-converted-space">          </span>// Initial savings</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const I = parseFloat(document.getElementById('annualIncome').value);<span class="Apple-converted-space">            </span>// Annual income</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const E = parseFloat(document.getElementById('annualExpenses').value);<span class="Apple-converted-space">          </span>// Annual non-housing expenses</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const r = parseFloat(document.getElementById('investmentRate').value) / 100;<span class="Apple-converted-space">    </span>// Investment return rate</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const P = parseFloat(document.getElementById('housePrice').value);<span class="Apple-converted-space">              </span>// House price</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const D = parseFloat(document.getElementById('downPayment').value); <span class="Apple-converted-space">            </span>// Down payment</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const mortgageRate = parseFloat(document.getElementById('mortgageRate').value) / 100; // Mortgage interest rate</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const propertyTaxRate = parseFloat(document.getElementById('propertyTaxRate').value) / 100; // Property tax rate</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const insuranceCost = parseFloat(document.getElementById('insuranceCost').value); // Insurance cost</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const maintenanceCost = parseFloat(document.getElementById('maintenanceCost').value); // Maintenance cost</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const a = parseFloat(document.getElementById('appreciationRate').value) / 100;<span class="Apple-converted-space">  </span>// House appreciation rate</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const R = parseFloat(document.getElementById('monthlyRent').value); <span class="Apple-converted-space">            </span>// Monthly rent</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const rentIncreaseRate = parseFloat(document.getElementById('rentIncreaseRate').value) / 100; // Rent increase rate</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>// Calculate monthly mortgage payment</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const loanAmount = P - D;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const monthlyMortgageRate = mortgageRate / 12;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const numberOfPayments = 30 * 12; // 30-year mortgage</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const M_buy = loanAmount * (monthlyMortgageRate * Math.pow(1 + monthlyMortgageRate, numberOfPayments)) /<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                          </span>(Math.pow(1 + monthlyMortgageRate, numberOfPayments) - 1);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>// Arrays for charting</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const years = Array.from({length: 31}, (_, i) =&gt; i); // Years 0 to 30</p>
+<p class="p1"><span class="Apple-converted-space">            </span>let netWorthBuy = [];</p>
+<p class="p1"><span class="Apple-converted-space">            </span>let netWorthRent = [];</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>// Buying scenario</p>
+<p class="p1"><span class="Apple-converted-space">            </span>let liquidAssetsBuy = S - D; // Initial liquid assets after down payment</p>
+<p class="p1"><span class="Apple-converted-space">            </span>let houseValue = P;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>let mortgageBalance = loanAmount;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>let equity = houseValue - mortgageBalance;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>netWorthBuy.push(liquidAssetsBuy + equity); // Net worth at year 0</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let t = 1; t &lt;= 30; t++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const propertyTax = propertyTaxRate * houseValue;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const annualHousingCost = 12 * M_buy + propertyTax + insuranceCost + maintenanceCost;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>liquidAssetsBuy = liquidAssetsBuy * (1 + r) + I - E - annualHousingCost;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>houseValue *= (1 + a); // House appreciates</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>// Simplified mortgage balance update (annual approximation)</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const interestPaid = mortgageBalance * mortgageRate;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const principalPaid = (12 * M_buy) - interestPaid;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>mortgageBalance -= principalPaid;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (mortgageBalance &lt; 0) mortgageBalance = 0;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>equity = houseValue - mortgageBalance;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>netWorthBuy.push(liquidAssetsBuy + equity);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>// Renting scenario</p>
+<p class="p1"><span class="Apple-converted-space">            </span>let liquidAssetsRent = S; // Keep all savings initially</p>
+<p class="p1"><span class="Apple-converted-space">            </span>let currentRent = R;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>netWorthRent.push(liquidAssetsRent); // Net worth at year 0</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let t = 1; t &lt;= 30; t++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const annualRentCost = 12 * currentRent;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>liquidAssetsRent = liquidAssetsRent * (1 + r) + I - E - annualRentCost;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>netWorthRent.push(liquidAssetsRent);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>currentRent *= (1 + rentIncreaseRate); // Rent increases annually</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>// Render chart</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const ctx = document.getElementById('netWorthChart').getContext('2d');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (window.myChart) window.myChart.destroy(); // Clear previous chart if exists</p>
+<p class="p1"><span class="Apple-converted-space">            </span>window.myChart = new Chart(ctx, {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>type: 'line',</p>
+<p class="p1"><span class="Apple-converted-space">                </span>data: {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>labels: years,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>datasets: [</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>{ label: 'Buying', data: netWorthBuy, borderColor: 'blue', fill: false },</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>{ label: 'Renting', data: netWorthRent, borderColor: 'green', fill: false }</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>]</p>
+<p class="p1"><span class="Apple-converted-space">                </span>},</p>
+<p class="p1"><span class="Apple-converted-space">                </span>options: {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>responsive: true,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>scales: {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>x: { title: { display: true, text: 'Years' } },</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>y: { title: { display: true, text: 'Net Worth ($)' } }</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/script&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+</body>
+</html>
