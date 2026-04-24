@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
   <title>Six Degrees of Inner Turbulence</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
@@ -10,20 +10,52 @@
     body {
       background: #000;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
       overflow: hidden;
+      touch-action: none;
     }
     #gameCanvas {
       display: block;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
+      flex-shrink: 0;
+    }
+    #tc {
+      display: none;
+      width: 100%;
+      max-width: 640px;
+      height: 110px;
+      position: relative;
+      flex-shrink: 0;
+    }
+    #dp {
+      position: absolute; left: 20px; bottom: 15px;
+      width: 90px; height: 90px;
+      background: rgba(0,255,255,0.12);
+      border: 2px solid rgba(0,255,255,0.35);
+      border-radius: 50%;
+    }
+    #fb {
+      position: absolute; right: 28px; bottom: 15px;
+      width: 80px; height: 80px;
+      background: rgba(255,34,0,0.25);
+      border: 2px solid rgba(255,100,100,0.5);
+      border-radius: 50%;
+      color: #fff; font: 6px "Press Start 2P",monospace;
+      display: flex; align-items: center; justify-content: center;
+      user-select: none; -webkit-user-select: none;
     }
   </style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
+<div id="tc">
+  <div id="dp"></div>
+  <div id="fb">FIRE</div>
+</div>
 <script>
 'use strict';
 // ── CONSTANTS ──
@@ -218,10 +250,49 @@ function drawSP(g,px,py,pal) {
 // ── CANVAS ──
 const canvas = document.getElementById('gameCanvas');
 canvas.width = W; canvas.height = H;
-canvas.style.width = (W * SCALE) + 'px';
-canvas.style.height = (H * SCALE) + 'px';
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
+
+function resizeCanvas() {
+  const ctrlH = ('ontouchstart' in window) ? 120 : 0;
+  const s = Math.min(window.innerWidth / W, (window.innerHeight - ctrlH) / H, SCALE);
+  canvas.style.width  = Math.floor(W * s) + 'px';
+  canvas.style.height = Math.floor(H * s) + 'px';
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ── TOUCH CONTROLS ──
+if ('ontouchstart' in window) {
+  document.getElementById('tc').style.display = 'block';
+  const dp = document.getElementById('dp');
+  const fb = document.getElementById('fb');
+  let dpCX = 0, dpCY = 0;
+
+  function applyDpad(t) {
+    const dx = t.clientX - dpCX, dy = t.clientY - dpCY, th = 14;
+    Keys.down.ArrowLeft  = dx < -th; Keys.down.ArrowRight = dx > th;
+    Keys.down.ArrowUp    = dy < -th; Keys.down.ArrowDown  = dy > th;
+  }
+  dp.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const r = dp.getBoundingClientRect();
+    dpCX = r.left + r.width / 2; dpCY = r.top + r.height / 2;
+    applyDpad(e.touches[0]);
+  }, {passive:false});
+  dp.addEventListener('touchmove', e => { e.preventDefault(); applyDpad(e.touches[0]); }, {passive:false});
+  dp.addEventListener('touchend',  e => {
+    e.preventDefault();
+    Keys.down.ArrowUp = Keys.down.ArrowDown = Keys.down.ArrowLeft = Keys.down.ArrowRight = false;
+  }, {passive:false});
+
+  fb.addEventListener('touchstart', e => { e.preventDefault(); Keys.down.Space = true;  }, {passive:false});
+  fb.addEventListener('touchend',   e => { e.preventDefault(); Keys.down.Space = false; }, {passive:false});
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault(); Aud._init(); Keys.press.Enter = true;
+  }, {passive:false});
+}
 
 // ── BACKGROUND ──
 const stars = Array.from({length:80},()=>({
