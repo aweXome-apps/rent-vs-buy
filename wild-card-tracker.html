@@ -27,6 +27,9 @@
             --btn-disabled: #99c2ff;
             --hero-bg: #fff;
             --dbacks-color: #A71930;
+            --health-good: #1a7d3a;
+            --health-watch: #b8860b;
+            --health-danger: #c0392b;
         }
         @media (prefers-color-scheme: dark) {
             :root {
@@ -51,6 +54,9 @@
                 --btn-disabled: #274668;
                 --hero-bg: #1f2228;
                 --dbacks-color: #ff5468;
+                --health-good: #3ddc73;
+                --health-watch: #e8b93a;
+                --health-danger: #ff6b6b;
             }
         }
         body { font-family: Arial, sans-serif; margin: 20px; background: var(--bg); color: var(--fg); }
@@ -85,6 +91,14 @@
         .hero-rank { font-size: 13px; color: var(--muted); }
         .hero-game { font-size: 20px; font-weight: bold; color: var(--fg); }
         .hero-race { font-size: 14px; font-weight: bold; color: var(--dbacks-color); }
+        .health-badge {
+            display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 10px;
+            font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.03em;
+            color: #fff; vertical-align: middle; cursor: help;
+        }
+        .health-good { background: var(--health-good); }
+        .health-watch { background: var(--health-watch); color: #1a1a1a; }
+        .health-danger { background: var(--health-danger); }
 
         .table-wrap { overflow-x: auto; border-radius: 6px; box-shadow: 0 1px 3px var(--shadow); }
         table { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--card-bg); display: none; }
@@ -563,16 +577,37 @@
         function computeDbacksRaceNumber(standings) {
             const dbacks = standings.find((t) => t.teamId === DBACKS_TEAM_ID);
             if (!dbacks) return null;
+            const gamesRemaining = Math.max(0, TOTAL_SEASON_GAMES - dbacks.wins - dbacks.losses);
             if (dbacks.wildCardRank <= WILD_CARD_SPOTS) {
                 const rival = findByRank(standings, WILD_CARD_SPOTS + 1);
                 if (!rival) return null;
                 const magic = Math.max(0, (TOTAL_SEASON_GAMES + 1) - dbacks.wins - rival.losses);
-                return { type: 'magic', value: magic };
+                return { type: 'magic', value: magic, gamesRemaining };
             }
             const rival = findByRank(standings, WILD_CARD_SPOTS);
             if (!rival) return null;
             const elimination = Math.max(0, (TOTAL_SEASON_GAMES + 1) - rival.wins - dbacks.losses);
-            return { type: 'elimination', value: elimination };
+            return { type: 'elimination', value: elimination, gamesRemaining };
+        }
+
+        // The same magic/elimination number means very different things depending on how much
+        // season is left — 63 with 140 games to go is nothing, 63 with 62 games left is dire.
+        // This compares the number to the Diamondbacks' own remaining games as a simple,
+        // transparent pace signal. It is a heuristic gut-check, not a probability model: it
+        // doesn't know about the rival's remaining schedule, injuries, etc. — just "how big is
+        // this number relative to how much season is left to move it."
+        function computeRaceHealth(raceNumber) {
+            if (!raceNumber || raceNumber.value === 0) return null;
+            if (raceNumber.gamesRemaining <= 0) return { key: 'danger', label: 'Season Over', ratio: Infinity };
+            const ratio = raceNumber.value / raceNumber.gamesRemaining;
+            if (raceNumber.type === 'magic') {
+                if (ratio <= 0.5) return { key: 'good', label: 'Clinching Soon', ratio };
+                if (ratio <= 1.0) return { key: 'watch', label: 'Race Tightening', ratio };
+                return { key: 'danger', label: 'Wide Open', ratio };
+            }
+            if (ratio <= 0.5) return { key: 'good', label: 'On Pace', ratio };
+            if (ratio <= 1.0) return { key: 'watch', label: 'In Danger', ratio };
+            return { key: 'danger', label: 'Basically Hopeless', ratio };
         }
 
         function renderHeroCard(standings) {
@@ -587,6 +622,7 @@
             const meta = TEAM_META[DBACKS_TEAM_ID];
             const raceNumber = computeDbacksRaceNumber(standings);
             let raceText = '';
+            let healthBadge = '';
             if (raceNumber) {
                 if (raceNumber.type === 'magic') {
                     raceText = raceNumber.value === 0
@@ -597,6 +633,14 @@
                         ? 'Eliminated from wild card contention'
                         : `Elimination Number: ${raceNumber.value}`;
                 }
+                const health = computeRaceHealth(raceNumber);
+                if (health) {
+                    const pct = Number.isFinite(health.ratio) ? Math.round(health.ratio * 100) : null;
+                    const title = pct != null
+                        ? `${raceNumber.value} needed vs ${raceNumber.gamesRemaining} games left (${pct}% of remaining games) — a pace heuristic, not a probability model`
+                        : 'No games remaining this season';
+                    healthBadge = `<span class="health-badge health-${health.key}" title="${title}">${health.label}</span>`;
+                }
             }
             hero.innerHTML = `
                 <img class="hero-logo" src="${meta?.logo || ''}" alt="" loading="lazy" onerror="this.style.display='none'">
@@ -604,7 +648,7 @@
                     <div class="hero-label">Arizona Diamondbacks</div>
                     <div class="hero-rank">Wild Card Rank #${dbacks.wildCardRank} &middot; ${dbacks.wins}-${dbacks.losses} &middot; GB ${dbacks.gamesBack}</div>
                     <div class="hero-game">${formatGameCell(dbacks)}</div>
-                    ${raceText ? `<div class="hero-race">${raceText}</div>` : ''}
+                    ${raceText ? `<div class="hero-race">${raceText} ${healthBadge}</div>` : ''}
                 </div>
             `;
         }
