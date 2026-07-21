@@ -143,6 +143,96 @@
             return gb.toFixed(1);
         }
 
+        // Official MLB tiebreaker order (since the 2022 rule change that replaced Game 163
+        // tiebreaker games with a statistical procedure): (1) head-to-head season series,
+        // (2) intradivision record, (3) interdivision (in-league) record, then further
+        // second-half-of-season splits that require full game-log history we don't pull here.
+        // We implement (1)-(3), which resolve the overwhelming majority of real ties, and fall
+        // back to a stable alphabetical order if a tie somehow survives all three.
+        function findSplitRecord(list, matchFn) {
+            if (!Array.isArray(list)) return null;
+            const entry = list.find(matchFn);
+            if (!entry || typeof entry.wins !== 'number' || typeof entry.losses !== 'number') return null;
+            const { wins, losses } = entry;
+            return { wins, losses, pct: (wins + losses) > 0 ? wins / (wins + losses) : null };
+        }
+
+        function intradivisionRecord(team) {
+            return findSplitRecord(team.splitRecords?.divisionRecords, (e) => e.division?.id === team.divisionId);
+        }
+
+        function interdivisionRecord(team) {
+            const leagueRec = findSplitRecord(team.splitRecords?.leagueRecords, (e) => e.league?.id === NL_LEAGUE_ID);
+            const divRec = intradivisionRecord(team);
+            if (!leagueRec || !divRec) return null;
+            const wins = leagueRec.wins - divRec.wins;
+            const losses = leagueRec.losses - divRec.losses;
+            if (wins < 0 || losses < 0) return null;
+            return { wins, losses, pct: (wins + losses) > 0 ? wins / (wins + losses) : null };
+        }
+
+        async function fetchHeadToHead(teamAId, teamBId, season) {
+            const url = `${API_BASE}/schedule?sportId=1&teamId=${teamAId}&opponentId=${teamBId}&season=${season}&gameType=R`;
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return null;
+                const data = await res.json();
+                let aWins = 0;
+                let bWins = 0;
+                for (const dateEntry of (data?.dates || [])) {
+                    for (const game of (dateEntry.games || [])) {
+                        if (game.status?.abstractGameState !== 'Final') continue;
+                        const home = game.teams?.home;
+                        const away = game.teams?.away;
+                        if (!home || !away) continue;
+                        const homeWon = home.isWinner === true || (typeof home.score === 'number' && typeof away.score === 'number' && home.score > away.score);
+                        const winnerId = homeWon ? home.team?.id : away.team?.id;
+                        if (winnerId === teamAId) aWins += 1;
+                        else if (winnerId === teamBId) bWins += 1;
+                    }
+                }
+                return { aWins, bWins };
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Resolves the order within a group of teams tied on winning percentage, using the
+        // official tiebreaker chain. Mutates nothing; returns a new array in tiebreak order.
+        async function resolveTiedGroup(teams, season) {
+            if (teams.length < 2) return teams;
+            const h2h = new Map();
+            const pairs = [];
+            for (let i = 0; i < teams.length; i++) {
+                for (let j = i + 1; j < teams.length; j++) pairs.push([teams[i], teams[j]]);
+            }
+            await Promise.all(pairs.map(async ([a, b]) => {
+                const record = await fetchHeadToHead(a.teamId, b.teamId, season);
+                if (!record) return;
+                // Array.prototype.sort's comparator may be called with either argument order,
+                // so both directions of the lookup need to resolve to a consistent result.
+                h2h.set(`${a.teamId}:${b.teamId}`, record);
+                h2h.set(`${b.teamId}:${a.teamId}`, { aWins: record.bWins, bWins: record.aWins });
+            }));
+
+            function compare(a, b) {
+                const rec = h2h.get(`${a.teamId}:${b.teamId}`);
+                if (rec && rec.aWins !== rec.bWins) return rec.aWins > rec.bWins ? -1 : 1;
+
+                const divA = intradivisionRecord(a);
+                const divB = intradivisionRecord(b);
+                if (divA?.pct != null && divB?.pct != null && divA.pct !== divB.pct) return divB.pct - divA.pct;
+
+                const interA = interdivisionRecord(a);
+                const interB = interdivisionRecord(b);
+                if (interA?.pct != null && interB?.pct != null && interA.pct !== interB.pct) return interB.pct - interA.pct;
+
+                return a.teamName.localeCompare(b.teamName);
+            }
+
+            return [...teams].sort(compare);
+        }
+
         async function fetchStandings(season) {
             // Pull full regular-season standings (all 3 NL divisions) rather than relying on the
             // API's own "wildCard" standings type, and derive the wild card pool ourselves from
@@ -162,11 +252,13 @@
                     const team = {
                         teamId: tr.team?.id,
                         teamName: tr.team?.name || 'Unknown',
+                        divisionId: record.division?.id,
                         divisionRank: parseInt(tr.divisionRank, 10) || 999,
                         wins: tr.wins ?? 0,
                         losses: tr.losses ?? 0,
                         pct: parseFloat(tr.winningPercentage) || 0,
                         streak: tr.streak?.streakCode || '—',
+                        splitRecords: tr.records || null,
                     };
                     allTeams.push(team);
                     if (team.divisionRank === 1) leaderIds.add(team.teamId);
@@ -175,6 +267,20 @@
 
             const wildCardPool = allTeams.filter((t) => !leaderIds.has(t.teamId));
             wildCardPool.sort((a, b) => b.pct - a.pct || (b.wins - b.losses) - (a.wins - a.losses));
+
+            // Resolve ties (identical winning percentage) using the official tiebreaker chain,
+            // one contiguous group at a time, so a division leader's win last night that breaks
+            // a tie shows up correctly on the very next refresh just like everything else here.
+            let i = 0;
+            while (i < wildCardPool.length) {
+                let j = i + 1;
+                while (j < wildCardPool.length && Math.abs(wildCardPool[j].pct - wildCardPool[i].pct) < 0.0005) j++;
+                if (j - i > 1) {
+                    const resolved = await resolveTiedGroup(wildCardPool.slice(i, j), season);
+                    wildCardPool.splice(i, j - i, ...resolved);
+                }
+                i = j;
+            }
 
             // GB is measured against whoever holds the last available wild card spot (3rd place
             // in the pool), not the pool leader — so it reads as "games behind clinching a spot"
