@@ -5,34 +5,100 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diamondbacks Wild Card Tracker</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; color: #222; }
-        h1 { color: #333; margin-bottom: 4px; }
-        .subtitle { color: #666; margin-top: 0; margin-bottom: 20px; }
+        :root {
+            --bg: #f7f7f7;
+            --fg: #222;
+            --muted: #666;
+            --card-bg: #fff;
+            --border: #e0e0e0;
+            --th-bg: #333;
+            --th-fg: #fff;
+            --row-in-bg: #e9f7ef;
+            --row-out-bg: #fff;
+            --cutline-color: #333;
+            --shadow: rgba(0,0,0,0.15);
+            --swatch-out-bg: #eee;
+            --swatch-out-border: #ccc;
+            --error-bg: #fdecea;
+            --error-fg: #611a15;
+            --error-border: #f5c6cb;
+            --btn-bg: #007BFF;
+            --btn-hover: #0056b3;
+            --btn-disabled: #99c2ff;
+            --hero-bg: #fff;
+            --dbacks-color: #A71930;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #14161a;
+                --fg: #e8e8ea;
+                --muted: #9aa0a8;
+                --card-bg: #1f2228;
+                --border: #33373f;
+                --th-bg: #0c0d10;
+                --th-fg: #e8e8ea;
+                --row-in-bg: #163523;
+                --row-out-bg: #1f2228;
+                --cutline-color: #e8e8ea;
+                --shadow: rgba(0,0,0,0.5);
+                --swatch-out-bg: #2a2d33;
+                --swatch-out-border: #444;
+                --error-bg: #3a1f1f;
+                --error-fg: #ffb3ac;
+                --error-border: #6b2b2b;
+                --btn-bg: #2f8bff;
+                --btn-hover: #1f6fd6;
+                --btn-disabled: #274668;
+                --hero-bg: #1f2228;
+                --dbacks-color: #ff5468;
+            }
+        }
+        body { font-family: Arial, sans-serif; margin: 20px; background: var(--bg); color: var(--fg); }
+        h1 { color: var(--fg); margin-bottom: 4px; }
+        .subtitle { color: var(--muted); margin-top: 0; margin-bottom: 20px; }
         .controls {
             display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
             margin-bottom: 16px;
         }
         button {
-            padding: 8px 16px; background-color: #007BFF; color: white;
+            padding: 8px 16px; background-color: var(--btn-bg); color: white;
             border: none; border-radius: 4px; cursor: pointer; font-size: 14px;
         }
-        button:hover { background-color: #0056b3; }
-        button:disabled { background-color: #99c2ff; cursor: default; }
-        #lastUpdated { color: #666; font-size: 13px; }
+        button:hover { background-color: var(--btn-hover); }
+        button:disabled { background-color: var(--btn-disabled); cursor: default; }
+        #lastUpdated { color: var(--muted); font-size: 13px; }
+        #cacheNote { color: var(--muted); font-size: 12px; font-style: italic; }
         #errorBanner {
-            display: none; background: #fdecea; color: #611a15; border: 1px solid #f5c6cb;
+            display: none; background: var(--error-bg); color: var(--error-fg); border: 1px solid var(--error-border);
             padding: 10px 14px; border-radius: 4px; margin-bottom: 16px; font-size: 14px;
         }
-        .table-wrap { overflow-x: auto; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
-        table { border-collapse: collapse; width: 100%; min-width: 640px; background: #fff; display: none; }
-        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e0e0e0; white-space: nowrap; }
-        th { background: #333; color: #fff; font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; }
-        tbody tr.wc-in { background: #e9f7ef; }
-        tbody tr.wc-out { background: #fff; }
-        tbody tr.dbacks-row { background: #a71930 !important; color: #fff; font-weight: bold; }
+
+        .hero-card {
+            display: none; align-items: center; gap: 16px;
+            background: var(--hero-bg); border-radius: 8px; padding: 16px 20px;
+            margin-bottom: 16px; box-shadow: 0 1px 3px var(--shadow);
+            border-left: 6px solid var(--dbacks-color);
+        }
+        .hero-logo { width: 56px; height: 56px; object-fit: contain; flex-shrink: 0; }
+        .hero-body { display: flex; flex-direction: column; gap: 4px; }
+        .hero-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .hero-rank { font-size: 13px; color: var(--muted); }
+        .hero-game { font-size: 20px; font-weight: bold; color: var(--fg); }
+        .hero-race { font-size: 14px; font-weight: bold; color: var(--dbacks-color); }
+
+        .table-wrap { overflow-x: auto; border-radius: 6px; box-shadow: 0 1px 3px var(--shadow); }
+        table { border-collapse: collapse; width: 100%; min-width: 640px; background: var(--card-bg); display: none; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        th { background: var(--th-bg); color: var(--th-fg); font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; }
+        tbody tr { border-left: 4px solid transparent; }
+        tbody tr.wc-in { background: var(--row-in-bg); border-left-color: var(--team-color, transparent); }
+        tbody tr.wc-out { background: var(--row-out-bg); border-left-color: var(--team-color, transparent); }
+        tbody tr.dbacks-row { background: var(--dbacks-color) !important; color: #fff; font-weight: bold; border-left-color: var(--dbacks-color); }
         tbody tr.dbacks-row .badge { border: 1px solid rgba(255,255,255,0.6); }
-        tr.cutline td { border-bottom: 3px solid #333; }
+        tr.cutline td { border-bottom: 3px solid var(--cutline-color); }
         .rank-cell { font-weight: bold; width: 36px; }
+        .team-cell { display: inline-flex; align-items: center; gap: 8px; }
+        .team-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
         .badge {
             display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px;
             font-weight: bold; color: #fff;
@@ -43,13 +109,47 @@
         .streak-w { color: #1a7d3a; font-weight: bold; }
         .streak-l { color: #c0392b; font-weight: bold; }
         .dbacks-row .streak-w, .dbacks-row .streak-l { color: #fff; }
-        .legend { margin-top: 14px; font-size: 13px; color: #555; }
+
+        @keyframes scoreFlash {
+            0% { background-color: rgba(255, 214, 0, 0.6); }
+            100% { background-color: transparent; }
+        }
+        tr.score-flash td { animation: scoreFlash 1.8s ease-out; }
+
+        .legend { margin-top: 14px; font-size: 13px; color: var(--muted); }
         .legend span { display: inline-flex; align-items: center; margin-right: 16px; }
         .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; }
         .swatch-in { background: #b6e8ca; }
-        .swatch-out { background: #eee; border: 1px solid #ccc; }
-        .swatch-dbacks { background: #a71930; }
-        #emptyMsg { display: none; padding: 20px; text-align: center; color: #666; background: #fff; border-radius: 6px; }
+        .swatch-out { background: var(--swatch-out-bg); border: 1px solid var(--swatch-out-border); }
+        .swatch-dbacks { background: var(--dbacks-color); }
+        #emptyMsg { display: none; padding: 20px; text-align: center; color: var(--muted); background: var(--card-bg); border-radius: 6px; }
+        #loadingMsg { color: var(--muted); }
+
+        @media (max-width: 640px) {
+            table { min-width: 0; width: 100%; }
+            thead, tbody, tr, td { display: block; width: 100%; box-sizing: border-box; }
+            thead { position: absolute; left: -9999px; }
+            tbody tr {
+                margin-bottom: 12px; border-radius: 8px; box-shadow: 0 1px 3px var(--shadow);
+                overflow: hidden; border-left-width: 4px;
+            }
+            tbody tr:last-child { margin-bottom: 0; }
+            td {
+                display: flex; justify-content: space-between; align-items: center;
+                white-space: normal; text-align: right; gap: 12px;
+            }
+            td::before {
+                content: attr(data-label); font-weight: bold; color: var(--muted);
+                text-align: left; flex-shrink: 0;
+            }
+            .dbacks-row td::before { color: rgba(255,255,255,0.8); }
+            td:last-child { border-bottom: none; }
+            /* On desktop the cutline is one border under the row 3 <tr>; on mobile each <td>
+               is its own block, so move the divider onto the card itself instead of every field. */
+            tr.cutline { border-bottom: 4px solid var(--cutline-color); margin-bottom: 16px; }
+            tr.cutline td { border-bottom: 1px solid var(--border); }
+            tr.cutline td:last-child { border-bottom: none; }
+        }
     </style>
 </head>
 <body>
@@ -59,9 +159,12 @@
     <div class="controls">
         <button id="refreshBtn" onclick="refreshAll()">Refresh</button>
         <span id="lastUpdated"></span>
+        <span id="cacheNote"></span>
     </div>
 
     <div id="errorBanner"></div>
+
+    <div id="dbacksHero" class="hero-card"></div>
 
     <div class="table-wrap">
         <table id="standingsTable">
@@ -79,7 +182,7 @@
         </table>
     </div>
     <div id="emptyMsg">No wild card standings available right now (likely off-season).</div>
-    <div id="loadingMsg" style="padding: 20px; text-align: center; color: #666;">Loading standings&hellip;</div>
+    <div id="loadingMsg" style="padding: 20px; text-align: center;">Loading standings&hellip;</div>
 
     <div class="legend">
         <span><span class="swatch swatch-in"></span>Holding a wild card spot (top 3)</span>
@@ -93,6 +196,31 @@
         const API_BASE = 'https://statsapi.mlb.com/api/v1';
         const POLL_LIVE_MS = 30000;
         const POLL_IDLE_MS = 300000;
+        const WILD_CARD_SPOTS = 3;
+        const TOTAL_SEASON_GAMES = 162;
+        const CACHE_KEY = 'wcTracker:v1';
+
+        // Static team branding lookup — the 15 NL teams `fetchStandings` can ever return.
+        // Colors are each team's primary brand color; logos are MLB's official static CDN,
+        // which is stable/public but unverified for CORS from this sandbox, so every <img>
+        // using it has an onerror fallback that just removes itself rather than breaking layout.
+        const TEAM_META = {
+            109: { color: '#A71930', logo: 'https://www.mlbstatic.com/team-logos/109.svg' }, // Diamondbacks
+            144: { color: '#13274F', logo: 'https://www.mlbstatic.com/team-logos/144.svg' }, // Braves
+            112: { color: '#0E3386', logo: 'https://www.mlbstatic.com/team-logos/112.svg' }, // Cubs
+            113: { color: '#C6011F', logo: 'https://www.mlbstatic.com/team-logos/113.svg' }, // Reds
+            115: { color: '#33006F', logo: 'https://www.mlbstatic.com/team-logos/115.svg' }, // Rockies
+            119: { color: '#005A9C', logo: 'https://www.mlbstatic.com/team-logos/119.svg' }, // Dodgers
+            146: { color: '#00A3E0', logo: 'https://www.mlbstatic.com/team-logos/146.svg' }, // Marlins
+            158: { color: '#12284B', logo: 'https://www.mlbstatic.com/team-logos/158.svg' }, // Brewers
+            121: { color: '#002D72', logo: 'https://www.mlbstatic.com/team-logos/121.svg' }, // Mets
+            143: { color: '#E81828', logo: 'https://www.mlbstatic.com/team-logos/143.svg' }, // Phillies
+            134: { color: '#FDB827', logo: 'https://www.mlbstatic.com/team-logos/134.svg' }, // Pirates
+            135: { color: '#2F241D', logo: 'https://www.mlbstatic.com/team-logos/135.svg' }, // Padres
+            137: { color: '#FD5A1E', logo: 'https://www.mlbstatic.com/team-logos/137.svg' }, // Giants
+            138: { color: '#C41E3A', logo: 'https://www.mlbstatic.com/team-logos/138.svg' }, // Cardinals
+            120: { color: '#AB0003', logo: 'https://www.mlbstatic.com/team-logos/120.svg' }, // Nationals
+        };
 
         let currentStandings = [];
         let pollTimer = null;
@@ -136,11 +264,30 @@
             banner.textContent = '';
         }
 
-        const WILD_CARD_SPOTS = 3;
-
         function formatGamesBack(gb) {
             if (gb <= 0.05) return '-';
             return gb.toFixed(1);
+        }
+
+        function saveCachedSnapshot(standings) {
+            try {
+                localStorage.setItem(CACHE_KEY, JSON.stringify({ v: 1, savedAt: Date.now(), standings }));
+            } catch (e) {
+                // localStorage unavailable (private browsing, quota, etc). Instant-load caching
+                // is a nice-to-have, not a requirement, so just skip it silently.
+            }
+        }
+
+        function loadCachedSnapshot() {
+            try {
+                const raw = localStorage.getItem(CACHE_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (parsed?.v !== 1 || !Array.isArray(parsed.standings) || parsed.standings.length === 0) return null;
+                return parsed;
+            } catch (e) {
+                return null;
+            }
         }
 
         // Official MLB tiebreaker order (since the 2022 rule change that replaced Game 163
@@ -402,8 +549,90 @@
             return '<span class="badge badge-scheduled">TBD</span>';
         }
 
+        function findByRank(standings, rank) {
+            return standings.find((t) => t.wildCardRank === rank) || null;
+        }
+
+        // Standard sports "magic number" formula: for a fixed-length season, team A has
+        // clinched ahead of team B once A.wins + B.losses >= games + 1, i.e.
+        // M = (games + 1) - A.wins - B.losses. Since the wild card pool is a strict rank
+        // order, the tightest possible threat to a team holding a spot is whichever team
+        // is immediately outside (rank 4), and the target for a team outside is whoever
+        // holds the last spot (rank 3) — so comparing against those specific teams is the
+        // real constraint, not a simplification.
+        function computeDbacksRaceNumber(standings) {
+            const dbacks = standings.find((t) => t.teamId === DBACKS_TEAM_ID);
+            if (!dbacks) return null;
+            if (dbacks.wildCardRank <= WILD_CARD_SPOTS) {
+                const rival = findByRank(standings, WILD_CARD_SPOTS + 1);
+                if (!rival) return null;
+                const magic = Math.max(0, (TOTAL_SEASON_GAMES + 1) - dbacks.wins - rival.losses);
+                return { type: 'magic', value: magic };
+            }
+            const rival = findByRank(standings, WILD_CARD_SPOTS);
+            if (!rival) return null;
+            const elimination = Math.max(0, (TOTAL_SEASON_GAMES + 1) - rival.wins - dbacks.losses);
+            return { type: 'elimination', value: elimination };
+        }
+
+        function renderHeroCard(standings) {
+            const hero = document.getElementById('dbacksHero');
+            if (!hero) return;
+            const dbacks = standings.find((t) => t.teamId === DBACKS_TEAM_ID);
+            if (!dbacks) {
+                hero.style.display = 'none';
+                return;
+            }
+            hero.style.display = 'flex';
+            const meta = TEAM_META[DBACKS_TEAM_ID];
+            const raceNumber = computeDbacksRaceNumber(standings);
+            let raceText = '';
+            if (raceNumber) {
+                if (raceNumber.type === 'magic') {
+                    raceText = raceNumber.value === 0
+                        ? 'Clinched a wild card berth'
+                        : `Magic Number: ${raceNumber.value}`;
+                } else {
+                    raceText = raceNumber.value === 0
+                        ? 'Eliminated from wild card contention'
+                        : `Elimination Number: ${raceNumber.value}`;
+                }
+            }
+            hero.innerHTML = `
+                <img class="hero-logo" src="${meta?.logo || ''}" alt="" loading="lazy" onerror="this.style.display='none'">
+                <div class="hero-body">
+                    <div class="hero-label">Arizona Diamondbacks</div>
+                    <div class="hero-rank">Wild Card Rank #${dbacks.wildCardRank} &middot; ${dbacks.wins}-${dbacks.losses} &middot; GB ${dbacks.gamesBack}</div>
+                    <div class="hero-game">${formatGameCell(dbacks)}</div>
+                    ${raceText ? `<div class="hero-race">${raceText}</div>` : ''}
+                </div>
+            `;
+        }
+
+        // FLIP animation: rows already have their new positions painted (Last) by the time
+        // this runs; firstRects holds each row's pre-render position (First), keyed by team id.
+        function applyFlipAnimation(tbody, firstRects) {
+            requestAnimationFrame(() => {
+                tbody.querySelectorAll('tr[data-team-id]').forEach((tr) => {
+                    const first = firstRects.get(tr.dataset.teamId);
+                    if (!first) return;
+                    const last = tr.getBoundingClientRect();
+                    const dy = first.top - last.top;
+                    if (Math.abs(dy) < 1) return;
+                    tr.style.transition = 'none';
+                    tr.style.transform = `translateY(${dy}px)`;
+                    requestAnimationFrame(() => {
+                        tr.style.transition = 'transform 350ms ease';
+                        tr.style.transform = '';
+                    });
+                });
+            });
+        }
+
         function render(standings) {
             hideLoading();
+            renderHeroCard(standings);
+
             const tbody = document.getElementById('standingsBody');
             const emptyMsg = document.getElementById('emptyMsg');
             const table = document.getElementById('standingsTable');
@@ -416,27 +645,47 @@
             table.style.display = 'table';
             emptyMsg.style.display = 'none';
 
+            const firstRects = new Map();
+            tbody.querySelectorAll('tr[data-team-id]').forEach((tr) => {
+                firstRects.set(tr.dataset.teamId, tr.getBoundingClientRect());
+            });
+
             tbody.innerHTML = '';
             standings.forEach((team) => {
                 const tr = document.createElement('tr');
+                tr.dataset.teamId = String(team.teamId);
                 const rowClasses = [team.wildCardRank <= 3 ? 'wc-in' : 'wc-out'];
                 if (team.teamId === DBACKS_TEAM_ID) rowClasses.push('dbacks-row');
                 if (team.wildCardRank === 3) rowClasses.push('cutline');
+                if (team._justScored) rowClasses.push('score-flash');
                 tr.className = rowClasses.join(' ');
+
+                const meta = TEAM_META[team.teamId];
+                if (meta) tr.style.setProperty('--team-color', meta.color);
 
                 const streakClass = typeof team.streak === 'string' && team.streak.startsWith('W')
                     ? 'streak-w'
                     : (typeof team.streak === 'string' && team.streak.startsWith('L') ? 'streak-l' : '');
 
+                const logoImg = meta
+                    ? `<img class="team-logo" src="${meta.logo}" alt="" loading="lazy" onerror="this.remove()">`
+                    : '';
+
                 tr.innerHTML = `
-                    <td class="rank-cell">${team.wildCardRank}</td>
-                    <td>${team.teamName}</td>
-                    <td>${team.wins}-${team.losses}</td>
-                    <td>${team.gamesBack}</td>
-                    <td class="${streakClass}">${team.streak}</td>
-                    <td>${formatGameCell(team)}</td>
+                    <td class="rank-cell" data-label="Rank">${team.wildCardRank}</td>
+                    <td data-label="Team"><span class="team-cell">${logoImg}<span>${team.teamName}</span></span></td>
+                    <td data-label="W-L">${team.wins}-${team.losses}</td>
+                    <td data-label="GB">${team.gamesBack}</td>
+                    <td class="${streakClass}" data-label="Streak">${team.streak}</td>
+                    <td data-label="Today / Next Game">${formatGameCell(team)}</td>
                 `;
                 tbody.appendChild(tr);
+            });
+
+            applyFlipAnimation(tbody, firstRects);
+
+            tbody.querySelectorAll('tr.score-flash').forEach((tr) => {
+                tr.addEventListener('animationend', () => tr.classList.remove('score-flash'), { once: true });
             });
         }
 
@@ -457,9 +706,23 @@
                     fetchTodaysGames(today),
                 ]);
                 await mergeGameDataIntoStandings(standings, todaysGamesMap);
+
+                // Tag teams whose live score changed since the last successful render, so
+                // render() can flash just those rows instead of the whole table.
+                const prevByTeam = new Map(currentStandings.map((t) => [t.teamId, t]));
+                standings.forEach((team) => {
+                    const prev = prevByTeam.get(team.teamId);
+                    const prevScore = prev?.todayGame ? `${prev.todayGame.awayScore}-${prev.todayGame.homeScore}` : null;
+                    const newScore = team.todayGame ? `${team.todayGame.awayScore}-${team.todayGame.homeScore}` : null;
+                    team._justScored = prevScore != null && newScore != null && prevScore !== newScore;
+                });
+
                 currentStandings = standings;
                 clearError();
                 render(currentStandings);
+                saveCachedSnapshot(currentStandings);
+                const cacheNote = document.getElementById('cacheNote');
+                if (cacheNote) cacheNote.textContent = '';
                 document.getElementById('lastUpdated').textContent =
                     `Last updated: ${new Date().toLocaleTimeString()}`;
             } catch (err) {
@@ -492,6 +755,18 @@
         });
 
         function init() {
+            const cached = loadCachedSnapshot();
+            if (cached) {
+                currentStandings = cached.standings;
+                render(currentStandings);
+                const ageMin = Math.max(0, Math.round((Date.now() - cached.savedAt) / 60000));
+                const cacheNote = document.getElementById('cacheNote');
+                if (cacheNote) {
+                    cacheNote.textContent = ageMin === 0
+                        ? 'Showing cached data from moments ago — refreshing…'
+                        : `Showing cached data from ${ageMin}m ago — refreshing…`;
+                }
+            }
             refreshAll();
         }
 
