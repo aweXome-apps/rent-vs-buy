@@ -136,6 +136,8 @@
             banner.textContent = '';
         }
 
+        const WILD_CARD_SPOTS = 3;
+
         function formatGamesBack(gb) {
             if (gb <= 0.05) return '-';
             return gb.toFixed(1);
@@ -174,11 +176,15 @@
             const wildCardPool = allTeams.filter((t) => !leaderIds.has(t.teamId));
             wildCardPool.sort((a, b) => b.pct - a.pct || (b.wins - b.losses) - (a.wins - a.losses));
 
-            const leader = wildCardPool[0];
+            // GB is measured against whoever holds the last available wild card spot (3rd place
+            // in the pool), not the pool leader — so it reads as "games behind clinching a spot"
+            // for teams on the outside, and "-" for the teams currently holding one.
+            const cutlineIndex = Math.min(WILD_CARD_SPOTS, wildCardPool.length) - 1;
+            const cutlineTeam = cutlineIndex >= 0 ? wildCardPool[cutlineIndex] : null;
             wildCardPool.forEach((t, i) => {
                 t.wildCardRank = i + 1;
-                t.gamesBack = leader
-                    ? formatGamesBack(((leader.wins - t.wins) + (t.losses - leader.losses)) / 2)
+                t.gamesBack = cutlineTeam
+                    ? formatGamesBack(((cutlineTeam.wins - t.wins) + (t.losses - cutlineTeam.losses)) / 2)
                     : '—';
             });
 
