@@ -136,28 +136,53 @@
             banner.textContent = '';
         }
 
+        function formatGamesBack(gb) {
+            if (gb <= 0.05) return '-';
+            return gb.toFixed(1);
+        }
+
         async function fetchStandings(season) {
-            const url = `${API_BASE}/standings?leagueId=${NL_LEAGUE_ID}&season=${season}&standingsTypes=wildCard`;
+            // Pull full regular-season standings (all 3 NL divisions) rather than relying on the
+            // API's own "wildCard" standings type, and derive the wild card pool ourselves from
+            // each team's live divisionRank. That way, the moment a division leader slips to 2nd
+            // place, they fall out of `leaderIds` on the very next poll and are recomputed into
+            // (or out of) the wild card field automatically — no separate detection logic needed.
+            const url = `${API_BASE}/standings?leagueId=${NL_LEAGUE_ID}&season=${season}&standingsTypes=regularSeason`;
             const res = await fetch(url);
             if (!res.ok) throw new Error(`Standings request failed (HTTP ${res.status})`);
             const data = await res.json();
             const records = data?.records || [];
-            const teams = [];
+
+            const allTeams = [];
+            const leaderIds = new Set();
             for (const record of records) {
                 for (const tr of (record.teamRecords || [])) {
-                    teams.push({
+                    const team = {
                         teamId: tr.team?.id,
                         teamName: tr.team?.name || 'Unknown',
-                        wildCardRank: parseInt(tr.wildCardRank, 10) || 999,
-                        gamesBack: tr.wildCardGamesBack ?? tr.gamesBack ?? '—',
-                        wins: tr.wins ?? '—',
-                        losses: tr.losses ?? '—',
+                        divisionRank: parseInt(tr.divisionRank, 10) || 999,
+                        wins: tr.wins ?? 0,
+                        losses: tr.losses ?? 0,
+                        pct: parseFloat(tr.winningPercentage) || 0,
                         streak: tr.streak?.streakCode || '—',
-                    });
+                    };
+                    allTeams.push(team);
+                    if (team.divisionRank === 1) leaderIds.add(team.teamId);
                 }
             }
-            teams.sort((a, b) => a.wildCardRank - b.wildCardRank);
-            return teams;
+
+            const wildCardPool = allTeams.filter((t) => !leaderIds.has(t.teamId));
+            wildCardPool.sort((a, b) => b.pct - a.pct || (b.wins - b.losses) - (a.wins - a.losses));
+
+            const leader = wildCardPool[0];
+            wildCardPool.forEach((t, i) => {
+                t.wildCardRank = i + 1;
+                t.gamesBack = leader
+                    ? formatGamesBack(((leader.wins - t.wins) + (t.losses - leader.losses)) / 2)
+                    : '—';
+            });
+
+            return wildCardPool;
         }
 
         async function fetchTodaysGames(dateStr) {
