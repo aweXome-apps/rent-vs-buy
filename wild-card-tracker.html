@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diamondbacks Wild Card Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; color: #222; }
+        h1 { color: #333; margin-bottom: 4px; }
+        .subtitle { color: #666; margin-top: 0; margin-bottom: 20px; }
+        .controls {
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        button {
+            padding: 8px 16px; background-color: #007BFF; color: white;
+            border: none; border-radius: 4px; cursor: pointer; font-size: 14px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #99c2ff; cursor: default; }
+        #lastUpdated { color: #666; font-size: 13px; }
+        #errorBanner {
+            display: none; background: #fdecea; color: #611a15; border: 1px solid #f5c6cb;
+            padding: 10px 14px; border-radius: 4px; margin-bottom: 16px; font-size: 14px;
+        }
+        .table-wrap { overflow-x: auto; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+        table { border-collapse: collapse; width: 100%; min-width: 640px; background: #fff; display: none; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e0e0e0; white-space: nowrap; }
+        th { background: #333; color: #fff; font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; }
+        tbody tr.wc-in { background: #e9f7ef; }
+        tbody tr.wc-out { background: #fff; }
+        tbody tr.dbacks-row { background: #a71930 !important; color: #fff; font-weight: bold; }
+        tbody tr.dbacks-row .badge { border: 1px solid rgba(255,255,255,0.6); }
+        tr.cutline td { border-bottom: 3px solid #333; }
+        .rank-cell { font-weight: bold; width: 36px; }
+        .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px;
+            font-weight: bold; color: #fff;
+        }
+        .badge-live { background: #e63946; }
+        .badge-final { background: #6c757d; }
+        .badge-scheduled { background: #007BFF; }
+        .streak-w { color: #1a7d3a; font-weight: bold; }
+        .streak-l { color: #c0392b; font-weight: bold; }
+        .dbacks-row .streak-w, .dbacks-row .streak-l { color: #fff; }
+        .legend { margin-top: 14px; font-size: 13px; color: #555; }
+        .legend span { display: inline-flex; align-items: center; margin-right: 16px; }
+        .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; }
+        .swatch-in { background: #b6e8ca; }
+        .swatch-out { background: #eee; border: 1px solid #ccc; }
+        .swatch-dbacks { background: #a71930; }
+        #emptyMsg { display: none; padding: 20px; text-align: center; color: #666; background: #fff; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <h1>Diamondbacks Wild Card Tracker</h1>
+    <p class="subtitle">National League Wild Card race &mdash; live scores and standings</p>
+
+    <div class="controls">
+        <button id="refreshBtn" onclick="refreshAll()">Refresh</button>
+        <span id="lastUpdated"></span>
+    </div>
+
+    <div id="errorBanner"></div>
+
+    <div class="table-wrap">
+        <table id="standingsTable">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Team</th>
+                    <th>W-L</th>
+                    <th>GB</th>
+                    <th>Streak</th>
+                    <th>Today / Next Game</th>
+                </tr>
+            </thead>
+            <tbody id="standingsBody"></tbody>
+        </table>
+    </div>
+    <div id="emptyMsg">No wild card standings available right now (likely off-season).</div>
+    <div id="loadingMsg" style="padding: 20px; text-align: center; color: #666;">Loading standings&hellip;</div>
+
+    <div class="legend">
+        <span><span class="swatch swatch-in"></span>Holding a wild card spot (top 3)</span>
+        <span><span class="swatch swatch-out"></span>Outside the wild card line</span>
+        <span><span class="swatch swatch-dbacks"></span>Arizona Diamondbacks</span>
+    </div>
+
+    <script>
+        const DBACKS_TEAM_ID = 109;
+        const NL_LEAGUE_ID = 104;
+        const API_BASE = 'https://statsapi.mlb.com/api/v1';
+        const POLL_LIVE_MS = 30000;
+        const POLL_IDLE_MS = 300000;
+
+        let currentStandings = [];
+        let pollTimer = null;
+        let inFlight = false;
+
+        function getCurrentSeason() {
+            return new Date().getFullYear();
+        }
+
+        function toDateStr(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function todayStr() {
+            return toDateStr(new Date());
+        }
+
+        function addDays(dateStr, days) {
+            const d = new Date(dateStr + 'T00:00:00');
+            d.setDate(d.getDate() + days);
+            return toDateStr(d);
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingMsg').style.display = 'none';
+        }
+
+        function showError(message) {
+            hideLoading();
+            const banner = document.getElementById('errorBanner');
+            banner.textContent = message;
+            banner.style.display = 'block';
+        }
+
+        function clearError() {
+            const banner = document.getElementById('errorBanner');
+            banner.style.display = 'none';
+            banner.textContent = '';
+        }
+
+        function formatGamesBack(gb) {
+            if (gb <= 0.05) return '-';
+            return gb.toFixed(1);
+        }
+
+        async function fetchStandings(season) {
+            // Pull full regular-season standings (all 3 NL divisions) rather than relying on the
+            // API's own "wildCard" standings type, and derive the wild card pool ourselves from
+            // each team's live divisionRank. That way, the moment a division leader slips to 2nd
+            // place, they fall out of `leaderIds` on the very next poll and are recomputed into
+            // (or out of) the wild card field automatically — no separate detection logic needed.
+            const url = `${API_BASE}/standings?leagueId=${NL_LEAGUE_ID}&season=${season}&standingsTypes=regularSeason`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`Standings request failed (HTTP ${res.status})`);
+            const data = await res.json();
+            const records = data?.records || [];
+
+            const allTeams = [];
+            const leaderIds = new Set();
+            for (const record of records) {
+                for (const tr of (record.teamRecords || [])) {
+                    const team = {
+                        teamId: tr.team?.id,
+                        teamName: tr.team?.name || 'Unknown',
+                        divisionRank: parseInt(tr.divisionRank, 10) || 999,
+                        wins: tr.wins ?? 0,
+                        losses: tr.losses ?? 0,
+                        pct: parseFloat(tr.winningPercentage) || 0,
+                        streak: tr.streak?.streakCode || '—',
+                    };
+                    allTeams.push(team);
+                    if (team.divisionRank === 1) leaderIds.add(team.teamId);
+                }
+            }
+
+            const wildCardPool = allTeams.filter((t) => !leaderIds.has(t.teamId));
+            wildCardPool.sort((a, b) => b.pct - a.pct || (b.wins - b.losses) - (a.wins - a.losses));
+
+            const leader = wildCardPool[0];
+            wildCardPool.forEach((t, i) => {
+                t.wildCardRank = i + 1;
+                t.gamesBack = leader
+                    ? formatGamesBack(((leader.wins - t.wins) + (t.losses - leader.losses)) / 2)
+                    : '—';
+            });
+
+            return wildCardPool;
+        }
+
+        async function fetchTodaysGames(dateStr) {
+            const url = `${API_BASE}/schedule?sportId=1&date=${dateStr}&hydrate=team,linescore`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`Schedule request failed (HTTP ${res.status})`);
+            const data = await res.json();
+            const games = data?.dates?.[0]?.games || [];
+            const map = new Map();
+            for (const game of games) {
+                const away = game.teams?.away;
+                const home = game.teams?.home;
+                const status = game.status || {};
+                const linescore = game.linescore || {};
+                const info = {
+                    status: status.abstractGameState || 'Unknown',
+                    detailedState: status.detailedState || '',
+                    inning: linescore.currentInningOrdinal || '',
+                    inningState: linescore.inningState || '',
+                    awayTeamId: away?.team?.id,
+                    homeTeamId: home?.team?.id,
+                    awayName: away?.team?.name || 'Away',
+                    homeName: home?.team?.name || 'Home',
+                    awayScore: away?.score,
+                    homeScore: home?.score,
+                    gameDate: game.gameDate,
+                };
+                if (info.awayTeamId) map.set(info.awayTeamId, { ...info, isHome: false, opponentName: info.homeName });
+                if (info.homeTeamId) map.set(info.homeTeamId, { ...info, isHome: true, opponentName: info.awayName });
+            }
+            return map;
+        }
+
+        async function fetchNextGame(teamId, fromDate) {
+            const endDate = addDays(fromDate, 14);
+            const url = `${API_BASE}/schedule?sportId=1&teamId=${teamId}&startDate=${fromDate}&endDate=${endDate}`;
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return null;
+                const data = await res.json();
+                for (const dateEntry of (data?.dates || [])) {
+                    const game = dateEntry.games?.[0];
+                    if (game) {
+                        const isHome = game.teams?.home?.team?.id === teamId;
+                        const opponent = isHome ? game.teams?.away?.team?.name : game.teams?.home?.team?.name;
+                        return { gameDate: game.gameDate, opponent: opponent || 'TBD', isHome };
+                    }
+                }
+            } catch (e) {
+                return null;
+            }
+            return null;
+        }
+
+        async function mergeGameDataIntoStandings(standings, todaysGamesMap) {
+            const from = todayStr();
+            const needsNextGame = [];
+            for (const team of standings) {
+                const game = team.teamId ? todaysGamesMap.get(team.teamId) : null;
+                if (game) {
+                    team.todayGame = game;
+                } else {
+                    needsNextGame.push(team);
+                }
+            }
+            await Promise.all(needsNextGame.map(async (team) => {
+                if (!team.teamId) return;
+                team.nextGame = await fetchNextGame(team.teamId, from);
+            }));
+            return standings;
+        }
+
+        function formatGameCell(team) {
+            if (team.todayGame) {
+                const g = team.todayGame;
+                const myScore = g.isHome ? g.homeScore : g.awayScore;
+                const oppScore = g.isHome ? g.awayScore : g.homeScore;
+                const vsAt = g.isHome ? 'vs' : '@';
+                let badgeClass = 'badge-scheduled';
+                let badgeText = 'Scheduled';
+                let scoreText = '';
+                if (g.status === 'Live') {
+                    badgeClass = 'badge-live';
+                    badgeText = g.inningState && g.inning ? `${g.inningState} ${g.inning}` : 'Live';
+                    scoreText = `${myScore ?? 0}-${oppScore ?? 0}`;
+                } else if (g.status === 'Final') {
+                    badgeClass = 'badge-final';
+                    badgeText = 'Final';
+                    scoreText = `${myScore ?? 0}-${oppScore ?? 0}`;
+                } else {
+                    const time = g.gameDate ? new Date(g.gameDate).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+                    scoreText = time;
+                }
+                return `<span class="badge ${badgeClass}">${badgeText}</span> ${vsAt} ${g.opponentName} ${scoreText ? `&mdash; ${scoreText}` : ''}`;
+            }
+            if (team.nextGame) {
+                const ng = team.nextGame;
+                const vsAt = ng.isHome ? 'vs' : '@';
+                const dateText = ng.gameDate
+                    ? new Date(ng.gameDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+                      new Date(ng.gameDate).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                    : 'TBD';
+                return `<span class="badge badge-scheduled">Next</span> ${dateText} ${vsAt} ${ng.opponent}`;
+            }
+            return '<span class="badge badge-scheduled">TBD</span>';
+        }
+
+        function render(standings) {
+            hideLoading();
+            const tbody = document.getElementById('standingsBody');
+            const emptyMsg = document.getElementById('emptyMsg');
+            const table = document.getElementById('standingsTable');
+
+            if (!standings || standings.length === 0) {
+                table.style.display = 'none';
+                emptyMsg.style.display = 'block';
+                return;
+            }
+            table.style.display = 'table';
+            emptyMsg.style.display = 'none';
+
+            tbody.innerHTML = '';
+            standings.forEach((team) => {
+                const tr = document.createElement('tr');
+                const rowClasses = [team.wildCardRank <= 3 ? 'wc-in' : 'wc-out'];
+                if (team.teamId === DBACKS_TEAM_ID) rowClasses.push('dbacks-row');
+                if (team.wildCardRank === 3) rowClasses.push('cutline');
+                tr.className = rowClasses.join(' ');
+
+                const streakClass = typeof team.streak === 'string' && team.streak.startsWith('W')
+                    ? 'streak-w'
+                    : (typeof team.streak === 'string' && team.streak.startsWith('L') ? 'streak-l' : '');
+
+                tr.innerHTML = `
+                    <td class="rank-cell">${team.wildCardRank}</td>
+                    <td>${team.teamName}</td>
+                    <td>${team.wins}-${team.losses}</td>
+                    <td>${team.gamesBack}</td>
+                    <td class="${streakClass}">${team.streak}</td>
+                    <td>${formatGameCell(team)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function hasLiveGames(standings) {
+            return standings.some((t) => t.todayGame && t.todayGame.status === 'Live');
+        }
+
+        async function refreshAll() {
+            if (inFlight) return;
+            inFlight = true;
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            try {
+                const season = getCurrentSeason();
+                const today = todayStr();
+                const [standings, todaysGamesMap] = await Promise.all([
+                    fetchStandings(season),
+                    fetchTodaysGames(today),
+                ]);
+                await mergeGameDataIntoStandings(standings, todaysGamesMap);
+                currentStandings = standings;
+                clearError();
+                render(currentStandings);
+                document.getElementById('lastUpdated').textContent =
+                    `Last updated: ${new Date().toLocaleTimeString()}`;
+            } catch (err) {
+                console.error(err);
+                if (err instanceof TypeError) {
+                    showError('Could not reach the MLB Stats API. This may be a network issue or a cross-origin (CORS) restriction in your browser.');
+                } else {
+                    showError(`Error loading wild card data: ${err.message}`);
+                }
+            } finally {
+                inFlight = false;
+                btn.disabled = false;
+                restartPolling();
+            }
+        }
+
+        function restartPolling() {
+            if (pollTimer) clearTimeout(pollTimer);
+            if (document.hidden) return;
+            const interval = hasLiveGames(currentStandings) ? POLL_LIVE_MS : POLL_IDLE_MS;
+            pollTimer = setTimeout(refreshAll, interval);
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (pollTimer) clearTimeout(pollTimer);
+            } else {
+                refreshAll();
+            }
+        });
+
+        function init() {
+            refreshAll();
+        }
+
+        init();
+    </script>
+</body>
+</html>
