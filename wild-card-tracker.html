@@ -582,31 +582,35 @@
                 const rival = findByRank(standings, WILD_CARD_SPOTS + 1);
                 if (!rival) return null;
                 const magic = Math.max(0, (TOTAL_SEASON_GAMES + 1) - dbacks.wins - rival.losses);
-                return { type: 'magic', value: magic, gamesRemaining };
+                const cushion = Math.max(0, ((dbacks.wins - rival.wins) + (rival.losses - dbacks.losses)) / 2);
+                return { type: 'magic', value: magic, gamesRemaining, gap: cushion };
             }
             const rival = findByRank(standings, WILD_CARD_SPOTS);
             if (!rival) return null;
             const elimination = Math.max(0, (TOTAL_SEASON_GAMES + 1) - rival.wins - dbacks.losses);
-            return { type: 'elimination', value: elimination, gamesRemaining };
+            const deficit = Math.max(0, ((rival.wins - dbacks.wins) + (dbacks.losses - rival.losses)) / 2);
+            return { type: 'elimination', value: elimination, gamesRemaining, gap: deficit };
         }
 
-        // The same magic/elimination number means very different things depending on how much
-        // season is left — 63 with 140 games to go is nothing, 63 with 62 games left is dire.
-        // This compares the number to the Diamondbacks' own remaining games as a simple,
-        // transparent pace signal. It is a heuristic gut-check, not a probability model: it
-        // doesn't know about the rival's remaining schedule, injuries, etc. — just "how big is
-        // this number relative to how much season is left to move it."
+        // Pace health, take 2. The first version compared the magic/elimination number itself to
+        // games remaining — wrong, because that number is dominated by a large constant
+        // (games + 1) that stays big even in a dead-even race, so it flagged a team 0.5 games
+        // back with 62 to play as "hopeless" purely because a lot of the season had been played.
+        // The number that actually tracks danger is the real competitive gap — games back (or
+        // cushion, if holding a spot) — relative to how many games are left to change it. Still
+        // a heuristic, not a probability model: it doesn't know the rival's remaining schedule,
+        // injuries, etc. — just "how big is the actual gap relative to how much season is left."
         function computeRaceHealth(raceNumber) {
             if (!raceNumber || raceNumber.value === 0) return null;
-            if (raceNumber.gamesRemaining <= 0) return { key: 'danger', label: 'Season Over', ratio: Infinity };
-            const ratio = raceNumber.value / raceNumber.gamesRemaining;
+            if (raceNumber.gamesRemaining <= 0) return { key: 'danger', label: 'Season Over', ratio: null };
+            const ratio = raceNumber.gap / raceNumber.gamesRemaining;
             if (raceNumber.type === 'magic') {
-                if (ratio <= 0.5) return { key: 'good', label: 'Clinching Soon', ratio };
-                if (ratio <= 1.0) return { key: 'watch', label: 'Race Tightening', ratio };
-                return { key: 'danger', label: 'Wide Open', ratio };
+                if (ratio >= 0.2) return { key: 'good', label: 'Comfortable Cushion', ratio };
+                if (ratio >= 0.08) return { key: 'watch', label: 'Race Tightening', ratio };
+                return { key: 'danger', label: 'Cushion Shrinking', ratio };
             }
-            if (ratio <= 0.5) return { key: 'good', label: 'On Pace', ratio };
-            if (ratio <= 1.0) return { key: 'watch', label: 'In Danger', ratio };
+            if (ratio <= 0.15) return { key: 'good', label: 'Very Much Alive', ratio };
+            if (ratio <= 0.35) return { key: 'watch', label: 'Uphill Battle', ratio };
             return { key: 'danger', label: 'Basically Hopeless', ratio };
         }
 
@@ -636,8 +640,9 @@
                 const health = computeRaceHealth(raceNumber);
                 if (health) {
                     const pct = Number.isFinite(health.ratio) ? Math.round(health.ratio * 100) : null;
+                    const gapLabel = raceNumber.type === 'magic' ? 'game cushion' : 'games back';
                     const title = pct != null
-                        ? `${raceNumber.value} needed vs ${raceNumber.gamesRemaining} games left (${pct}% of remaining games) — a pace heuristic, not a probability model`
+                        ? `${raceNumber.gap.toFixed(1)} ${gapLabel}, ${raceNumber.gamesRemaining} games left (gap is ${pct}% of games remaining) — a pace heuristic, not a probability model`
                         : 'No games remaining this season';
                     healthBadge = `<span class="health-badge health-${health.key}" title="${title}">${health.label}</span>`;
                 }
