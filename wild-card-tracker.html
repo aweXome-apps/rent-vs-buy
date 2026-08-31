@@ -6,61 +6,97 @@
     <title>Diamondbacks Wild Card Tracker</title>
     <style>
         :root {
-            --bg: #f7f7f7;
-            --fg: #222;
-            --muted: #666;
+            /* 2001 World Series-era Diamondbacks palette — purple, teal, copper and a warm
+               black, the scheme they wore from 1998 until the 2007 switch to Sedona red.
+               These raw brand colors are deliberately NOT redefined for dark mode; only the
+               semantic tokens below them shift. */
+            --dbacks-purple: #5F259F;
+            --dbacks-teal: #005F61;
+            --dbacks-teal-bright: #30C6B7;
+            --dbacks-copper: #8B634B;
+            --dbacks-black: #27251F;
+
+            --bg: #f4f2ef;
+            --fg: #27251F;
+            --muted: #6b6559;
             --card-bg: #fff;
-            --border: #e0e0e0;
-            --th-bg: #333;
+            --border: #e2ddd5;
+            --th-bg: #5F259F;
             --th-fg: #fff;
-            --row-in-bg: #e9f7ef;
+            --row-in-bg: #e2f2f0;
             --row-out-bg: #fff;
-            --cutline-color: #333;
-            --shadow: rgba(0,0,0,0.15);
-            --swatch-out-bg: #eee;
-            --swatch-out-border: #ccc;
+            --cutline-color: #5F259F;
+            --shadow: rgba(39,37,31,0.18);
+            --swatch-in-bg: #a8ded8;
+            --swatch-out-bg: #eeeae3;
+            --swatch-out-border: #cfc7ba;
             --error-bg: #fdecea;
             --error-fg: #611a15;
             --error-border: #f5c6cb;
-            --btn-bg: #007BFF;
-            --btn-hover: #0056b3;
-            --btn-disabled: #99c2ff;
+            --btn-bg: #005F61;
+            --btn-hover: #00474a;
+            --btn-disabled: #9dc4c4;
             --hero-bg: #fff;
-            --dbacks-color: #A71930;
-            --health-good: #1a7d3a;
-            --health-watch: #b8860b;
-            --health-danger: #c0392b;
+            --dbacks-color: #5F259F;
+            --dbacks-text: #5F259F;
+            --badge-live: #A9603F;
+            --badge-final: #6d675c;
+            --badge-scheduled: #005F61;
+            --flash-color: rgba(139, 99, 75, 0.45);
+            --streak-w: #00706F;
+            --streak-l: #A03A28;
+            --health-good: #00706F;
+            --health-watch: #8B634B;
+            --health-watch-fg: #fff;
+            --health-danger: #A02938;
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #14161a;
-                --fg: #e8e8ea;
-                --muted: #9aa0a8;
-                --card-bg: #1f2228;
-                --border: #33373f;
-                --th-bg: #0c0d10;
-                --th-fg: #e8e8ea;
-                --row-in-bg: #163523;
-                --row-out-bg: #1f2228;
-                --cutline-color: #e8e8ea;
-                --shadow: rgba(0,0,0,0.5);
-                --swatch-out-bg: #2a2d33;
-                --swatch-out-border: #444;
+                --bg: #16121c;
+                --fg: #efeae2;
+                --muted: #a49c92;
+                --card-bg: #211b29;
+                --border: #3a3145;
+                --th-bg: #3d1868;
+                --th-fg: #efeae2;
+                --row-in-bg: #10312f;
+                --row-out-bg: #211b29;
+                --cutline-color: #C9A6F0;
+                --shadow: rgba(0,0,0,0.55);
+                --swatch-in-bg: #2c6f69;
+                --swatch-out-bg: #2c2635;
+                --swatch-out-border: #4a4157;
                 --error-bg: #3a1f1f;
                 --error-fg: #ffb3ac;
                 --error-border: #6b2b2b;
-                --btn-bg: #2f8bff;
-                --btn-hover: #1f6fd6;
-                --btn-disabled: #274668;
-                --hero-bg: #1f2228;
-                --dbacks-color: #ff5468;
-                --health-good: #3ddc73;
-                --health-watch: #e8b93a;
-                --health-danger: #ff6b6b;
+                --btn-bg: #00807F;
+                --btn-hover: #00615f;
+                --btn-disabled: #2a4a4a;
+                --hero-bg: #211b29;
+                --dbacks-color: #6B2FB0;
+                --dbacks-text: #C9A6F0;
+                --badge-live: #C87A50;
+                --badge-final: #5f5a52;
+                --badge-scheduled: #00807F;
+                --flash-color: rgba(200, 122, 80, 0.45);
+                --streak-w: #30C6B7;
+                --streak-l: #E8735C;
+                --health-good: #30C6B7;
+                --health-watch: #C69065;
+                --health-watch-fg: #2a1f16;
+                --health-danger: #F0685F;
             }
         }
         body { font-family: Arial, sans-serif; margin: 20px; background: var(--bg); color: var(--fg); }
-        h1 { color: var(--fg); margin-bottom: 4px; }
+        h1 { color: var(--fg); margin-bottom: 8px; }
+        /* Purple / teal / copper stripe — the 2001 uniform trio, in order. */
+        .title-accent {
+            height: 5px; width: 210px; border-radius: 3px; margin: 0 0 10px;
+            background: linear-gradient(90deg,
+                var(--dbacks-purple) 0 33.3%,
+                var(--dbacks-teal-bright) 33.3% 66.6%,
+                var(--dbacks-copper) 66.6% 100%);
+        }
         .subtitle { color: var(--muted); margin-top: 0; margin-bottom: 20px; }
         .controls {
             display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -90,14 +126,14 @@
         .hero-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
         .hero-rank { font-size: 13px; color: var(--muted); }
         .hero-game { font-size: 20px; font-weight: bold; color: var(--fg); }
-        .hero-race { font-size: 14px; font-weight: bold; color: var(--dbacks-color); }
+        .hero-race { font-size: 14px; font-weight: bold; color: var(--dbacks-text); }
         .health-badge {
             display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 10px;
             font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.03em;
             color: #fff; vertical-align: middle; cursor: help;
         }
         .health-good { background: var(--health-good); }
-        .health-watch { background: var(--health-watch); color: #1a1a1a; }
+        .health-watch { background: var(--health-watch); color: var(--health-watch-fg); }
         .health-danger { background: var(--health-danger); }
 
         .table-wrap { overflow-x: auto; border-radius: 6px; box-shadow: 0 1px 3px var(--shadow); }
@@ -117,15 +153,15 @@
             display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px;
             font-weight: bold; color: #fff;
         }
-        .badge-live { background: #e63946; }
-        .badge-final { background: #6c757d; }
-        .badge-scheduled { background: #007BFF; }
-        .streak-w { color: #1a7d3a; font-weight: bold; }
-        .streak-l { color: #c0392b; font-weight: bold; }
+        .badge-live { background: var(--badge-live); }
+        .badge-final { background: var(--badge-final); }
+        .badge-scheduled { background: var(--badge-scheduled); }
+        .streak-w { color: var(--streak-w); font-weight: bold; }
+        .streak-l { color: var(--streak-l); font-weight: bold; }
         .dbacks-row .streak-w, .dbacks-row .streak-l { color: #fff; }
 
         @keyframes scoreFlash {
-            0% { background-color: rgba(255, 214, 0, 0.6); }
+            0% { background-color: var(--flash-color); }
             100% { background-color: transparent; }
         }
         tr.score-flash td { animation: scoreFlash 1.8s ease-out; }
@@ -133,7 +169,7 @@
         .legend { margin-top: 14px; font-size: 13px; color: var(--muted); }
         .legend span { display: inline-flex; align-items: center; margin-right: 16px; }
         .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; }
-        .swatch-in { background: #b6e8ca; }
+        .swatch-in { background: var(--swatch-in-bg); }
         .swatch-out { background: var(--swatch-out-bg); border: 1px solid var(--swatch-out-border); }
         .swatch-dbacks { background: var(--dbacks-color); }
         #emptyMsg { display: none; padding: 20px; text-align: center; color: var(--muted); background: var(--card-bg); border-radius: 6px; }
@@ -168,6 +204,7 @@
 </head>
 <body>
     <h1>Diamondbacks Wild Card Tracker</h1>
+    <div class="title-accent"></div>
     <p class="subtitle">National League Wild Card race &mdash; live scores and standings</p>
 
     <div class="controls">
@@ -219,7 +256,7 @@
         // which is stable/public but unverified for CORS from this sandbox, so every <img>
         // using it has an onerror fallback that just removes itself rather than breaking layout.
         const TEAM_META = {
-            109: { color: '#A71930', logo: 'https://www.mlbstatic.com/team-logos/109.svg' }, // Diamondbacks
+            109: { color: '#5F259F', logo: 'https://www.mlbstatic.com/team-logos/109.svg' }, // Diamondbacks (2001 purple)
             144: { color: '#13274F', logo: 'https://www.mlbstatic.com/team-logos/144.svg' }, // Braves
             112: { color: '#0E3386', logo: 'https://www.mlbstatic.com/team-logos/112.svg' }, // Cubs
             113: { color: '#C6011F', logo: 'https://www.mlbstatic.com/team-logos/113.svg' }, // Reds
